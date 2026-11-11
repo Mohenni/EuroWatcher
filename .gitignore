@@ -1,0 +1,14 @@
+# Build results: these are attached to the GitHub releases instead of living in the repository.
+/bin/
+/EuroWatcherSetup.exe
+*.pdb
+
+# Python
+__pycache__/
+*.pyc
+
+# Local helper settings for Claude Code
+/.claude/
+
+# Helper that uploads this folder from this PC; not part of the project
+/publish-to-github.bat

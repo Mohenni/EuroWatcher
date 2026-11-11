@@ -1,0 +1,48 @@
+name: Update draw data
+
+# Keeps data/draws.js in this repository current, the morning after every Tuesday and Friday draw.
+# The installed apps fetch new draws themselves; this copy is what new installs start from, and
+# what the apps fall back to when the original sources cannot be reached.
+# If a source is down or blocks GitHub's machines, nothing is changed and the next run tries again.
+
+on:
+  schedule:
+    - cron: '30 6 * * 3,6'    # Wednesday and Saturday, 06:30 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Fetch the newest draws
+        id: fetch
+        run: |
+          if node tools/update-data.mjs; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::The draw sources could not be read this time; the data was left as it was."
+          fi
+      - name: Save them if anything changed
+        if: steps.fetch.outputs.ok == 'true'
+        run: |
+          # The file always gets a new "generated" time; only real changes are worth a commit.
+          if git diff --quiet -I '"generated"' -- data/draws.js; then
+            echo "No new draws."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/draws.js
+          git commit -m "Draw data: $(grep -o '^\[[0-9]*,"[0-9-]*"' data/draws.js | tail -1 | cut -d'"' -f2)"
+          git push

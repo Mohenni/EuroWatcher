@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>EuroWatcher: every EuroMillions draw</title>
+  <meta name="description" content="The complete history of real EuroMillions winning combinations, searchable against your own numbers.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-6 -6 112 108'%3E%3Cpolygon points='50,0 65.9,28.2 97.6,34.5 75.7,58.3 79.4,90.5 50,77 20.6,90.5 24.3,58.3 2.4,34.5 34.1,28.2' fill='%23e9aa0b' stroke='%23e9aa0b' stroke-width='10' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Text in this file is the English fallback; app.js replaces every data-t* element with the chosen language. -->
+  <header class="masthead">
+    <div class="wrap masthead-row">
+      <a class="brand" href="#top"><span class="brand-star" aria-hidden="true"></span>EuroWatcher</a>
+      <nav class="nav" aria-label="Sections">
+        <a href="#check"><span class="long" data-t="nav.check">Check my numbers</span><span class="short" data-t="nav.checkShort">Check</span></a>
+        <a href="#sameday"><span class="long" data-t="nav.date">Same date</span><span class="short" data-t="nav.dateShort">Date</span></a>
+        <a href="#history"><span class="long" data-t="nav.history">Every draw</span><span class="short" data-t="nav.historyShort">Draws</span></a>
+        <a href="#about"><span class="long" data-t="nav.about">About the data</span><span class="short" data-t="nav.aboutShort">About</span></a>
+      </nav>
+      <div class="tools">
+        <button class="btn btn-small btn-donate" type="button" id="donate-open"><span class="donate-star" aria-hidden="true"></span><span data-t="donate">Donate</span></button>
+        <select id="lang" class="lang" aria-label="Language" data-t-aria="language"></select>
+      </div>
+    </div>
+  </header>
+
+  <div class="update-bar" id="update-bar" role="status" hidden>
+    <div class="wrap update-row">
+      <div class="update-text">
+        <strong data-t="u.title">New draws are out</strong>
+        <span id="update-body"></span>
+      </div>
+      <div class="update-actions">
+        <button class="btn btn-primary btn-small" type="button" id="update-now" data-t="u.now">Update now</button>
+        <button class="btn btn-quiet btn-small" type="button" id="update-later" data-t="u.later">Later</button>
+      </div>
+    </div>
+  </div>
+
+  <main class="wrap" id="top">
+    <div class="fatal" id="fatal" hidden>
+      <h1 data-t="fatal.title">No draw data found</h1>
+      <p data-t-rich="fatal.body">The file <code>data/draws.js</code> is missing or empty.</p>
+    </div>
+
+    <section class="hero">
+      <div class="hero-text">
+        <p class="eyebrow" data-t="hero.eyebrow">EuroMillions archive, 2004 to today</p>
+        <h1 data-t="hero.title">Every winning combination ever drawn.</h1>
+        <p class="lede" id="hero-lede"></p>
+      </div>
+      <article class="card latest" id="latest" aria-label="Latest draw" data-t-aria="latest.label"></article>
+    </section>
+
+    <section class="section" id="check" aria-labelledby="check-title">
+      <div class="section-head">
+        <h2 id="check-title" data-t="check.title">Check my numbers</h2>
+        <p data-t="check.intro">Pick 5 numbers and 2 Lucky Stars.</p>
+      </div>
+
+      <div class="check-grid">
+        <div class="card picker">
+          <div class="pick-head">
+            <h3 data-t="numbers">Numbers</h3>
+            <span class="counter" id="count-n">0 / 5</span>
+          </div>
+          <div class="num-grid" id="num-grid" role="group" aria-label="Numbers 1 to 50" data-t-aria="numbers.aria"></div>
+
+          <div class="pick-head">
+            <h3 data-t="stars">Lucky Stars</h3>
+            <span class="counter" id="count-s">0 / 2</span>
+          </div>
+          <div class="star-grid" id="star-grid" role="group" aria-label="Lucky Stars 1 to 12" data-t-aria="stars.aria"></div>
+
+          <form class="quick" id="quick-form" novalidate>
+            <label for="quick" data-t="quick.label">Or type your line</label>
+            <div class="quick-row">
+              <input id="quick" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="3 14 22 35 48 + 2 9">
+              <button class="btn" type="submit" data-t="quick.check">Check</button>
+            </div>
+            <p class="quick-error" id="quick-error" role="alert" hidden></p>
+          </form>
+
+          <div class="pick-actions">
+            <button class="btn btn-primary" type="button" id="save-line">Save to my plays</button>
+            <button class="btn" type="button" id="random-line" data-t="random">Random line</button>
+            <button class="btn btn-quiet" type="button" id="clear-line" data-t="clear">Clear</button>
+          </div>
+
+          <div class="saved" id="saved" hidden>
+            <h3 data-t="plays.title">My plays</h3>
+            <ul class="saved-list" id="saved-list"></ul>
+          </div>
+        </div>
+
+        <div class="results" id="results" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section class="section" id="sameday" aria-labelledby="sameday-title">
+      <div class="section-head">
+        <h2 id="sameday-title" data-t="sd.title">Same date in past years</h2>
+        <p data-t="sd.intro">Pick the day you are playing.</p>
+      </div>
+      <div class="filters">
+        <label><span data-t="sd.label">Playing on</span>
+          <input id="sd-date" type="date">
+        </label>
+        <button class="btn" type="button" id="sd-next" data-t="sd.next">Next draw day</button>
+        <p class="filter-count" id="sd-count" aria-live="polite"></p>
+      </div>
+      <ol class="draws" id="sd-list"></ol>
+    </section>
+
+    <section class="section" id="history" aria-labelledby="history-title">
+      <div class="section-head">
+        <h2 id="history-title" data-t="h.title">Every draw</h2>
+        <p data-t="h.intro">The full record, newest first.</p>
+      </div>
+
+      <div class="facts" id="facts"></div>
+
+      <div class="filters">
+        <label><span data-t="f.year">Year</span>
+          <select id="f-year"></select>
+        </label>
+        <label><span data-t="f.jackpot">Jackpot</span>
+          <select id="f-status">
+            <option value="" data-t="f.all">All draws</option>
+            <option value="won" data-t="f.won">Won</option>
+            <option value="notwon" data-t="f.notWon">Not won</option>
+          </select>
+        </label>
+        <label><span data-t="f.order">Order</span>
+          <select id="f-sort">
+            <option value="new" data-t="f.new">Newest first</option>
+            <option value="old" data-t="f.old">Oldest first</option>
+            <option value="pot" data-t="f.pot">Biggest jackpot</option>
+          </select>
+        </label>
+        <label class="grow"><span data-t="f.contains">Contains</span>
+          <input id="f-contains" type="text" autocomplete="off" spellcheck="false" placeholder="e.g. 7 23 or 7 23 + 4" data-t-ph="f.containsPh">
+        </label>
+        <p class="filter-count" id="f-count" aria-live="polite"></p>
+      </div>
+
+      <ol class="draws" id="draws"></ol>
+      <div class="more-row">
+        <button class="btn" type="button" id="draws-more" hidden></button>
+      </div>
+    </section>
+
+    <section class="section about" id="about" aria-labelledby="about-title">
+      <div class="section-head">
+        <h2 id="about-title" data-t="about.title">About the data</h2>
+      </div>
+      <div class="about-grid">
+        <div>
+          <h3 data-t="about.from">Where it comes from</h3>
+          <p id="about-checks"></p>
+          <ul class="sources" id="about-sources"></ul>
+          <p id="about-refresh"></p>
+          <p class="about-update" id="about-update" hidden>
+            <button class="btn btn-primary btn-small" type="button" id="update-manual" data-t="u.button">Update draw data</button>
+            <span class="update-status" id="update-status" aria-live="polite"></span>
+          </p>
+        </div>
+        <div>
+          <h3 data-t="about.changes">How the game has changed</h3>
+          <ul class="eras">
+            <li><strong data-date="2004-02-13"></strong><span data-t="era1">First draw.</span></li>
+            <li><strong data-date="2011-05-10"></strong><span data-t="era2">Tuesday draws begin.</span></li>
+            <li><strong data-date="2016-09-27"></strong><span data-t="era3">Lucky Stars go up to 12.</span></li>
+          </ul>
+          <p class="fine" data-t="about.starsNote"></p>
+        </div>
+      </div>
+      <p class="fine" data-t="about.disclaimer"></p>
+    </section>
+  </main>
+
+  <dialog class="donate" id="donate" aria-labelledby="donate-title">
+    <form method="dialog" class="donate-inner">
+      <h2 id="donate-title" data-t="don.title">Support EuroWatcher</h2>
+      <p data-t="don.body"></p>
+      <code class="donate-address" id="donate-address" aria-label="Bitcoin address"></code>
+      <p class="fine" data-t="don.note"></p>
+      <div class="donate-actions">
+        <button class="btn" value="close" data-t="don.close">Close</button>
+        <button class="btn btn-primary" type="button" id="donate-copy" data-t="don.copy">Copy address</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="data/draws.js"></script>
+  <script src="i18n.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

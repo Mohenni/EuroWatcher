@@ -1,0 +1,78 @@
+name: Build and test
+
+# Runs on every upload: builds the Windows program from source, installs and removes it in a
+# throw-away folder, and tries the Linux / macOS edition on real Linux and macOS machines.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: Windows build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Page scripts are valid
+        run: |
+          node --check app.js
+          node --check i18n.js
+          node --check tools/update-data.mjs
+      - name: Build with the compiler that is part of Windows
+        shell: cmd
+        run: call build.bat
+      - name: Self-test (data round trip and the local server, no internet)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force out | Out-Null
+          $p = Start-Process -FilePath bin\EuroWatcher.exe -ArgumentList '--selftest', "$PWD\out" -PassThru -Wait
+          Get-Content out\notes.txt
+          if (Test-Path out\errors.txt) { Get-Content out\errors.txt; throw "self-test reported errors" }
+          if (-not (Test-Path out\done.txt)) { throw "self-test did not finish" }
+      - name: Install and remove in a throw-away folder
+        shell: pwsh
+        run: |
+          $box = "$env:RUNNER_TEMP\sandbox"
+          $i = Start-Process EuroWatcherSetup.exe -ArgumentList '/silent', '/sandbox', "`"$box`"" -PassThru -Wait
+          if ($i.ExitCode -ne 0 -or -not (Test-Path "$box\Programs\EuroWatcher\EuroWatcher.exe")) { throw "install failed" }
+          $u = Start-Process "$box\Programs\EuroWatcher\Uninstall.exe" -ArgumentList '/uninstall', '/silent', '/sandbox', "`"$box`"" -PassThru -Wait
+          $deadline = (Get-Date).AddSeconds(30)
+          while ((Test-Path "$box\Programs\EuroWatcher") -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 500 }
+          if (Test-Path "$box\Programs\EuroWatcher") { throw "uninstall left files behind" }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EuroWatcher-windows
+          path: |
+            EuroWatcherSetup.exe
+            bin/EuroWatcher.exe
+
+  unix:
+    name: ${{ matrix.os }} edition
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Self-test
+        run: python3 unix/eurowatcher.py --selftest
+      - name: Installer puts everything in place
+        run: |
+          sh install.sh
+          test -x "$HOME/.local/bin/eurowatcher"
+          "$HOME/.local/bin/eurowatcher" --version
+      - name: Serves the page
+        run: |
+          "$HOME/.local/bin/eurowatcher" --no-window &
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:47811/api/status && break; sleep 1; done
+          curl -fsS http://127.0.0.1:47811/ | grep -q EuroWatcher
+          kill %1
+      - name: Uninstall
+        run: |
+          sh install.sh --uninstall --purge
+          test ! -e "$HOME/.local/bin/eurowatcher"
