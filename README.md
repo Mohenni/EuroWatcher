@@ -8,20 +8,39 @@ Deutsch, Nederlands and Italiano.
 These are the real results, not predictions or "likely numbers": EuroWatcher only shows what was actually
 drawn, and what each draw actually paid.
 
+![EuroWatcher: the latest draw and the start page](docs/overview.png)
+
 ## What it does
 
 - **Check my numbers.** Pick 5 numbers and 2 Lucky Stars, or type them (`3 14 22 35 48 + 2 9`). You see:
   - whether that exact line has **ever been drawn**, and when, or that it is **novel**;
   - every prize it **would have won** if you had played it in every draw, with dates and the amounts paid;
   - the **closest draws**, ranked by balls matched or by how far the drawn numbers sit from yours.
+
+  ![Checking a line: never drawn, and every prize it would have won](docs/check-line.png)
+
+  ![The draws that came closest to that line](docs/closest-draws.png)
+
 - **Fewer balls work too.** Pick 2, 3 or 4 balls to see every draw where they came up together.
 - **Same date in past years.** Choose the day you are playing (a Tuesday or a Friday) and see every earlier
   draw held on that same day and month, with its winning numbers.
+
+  ![Every earlier draw held on 13 November](docs/same-date.png)
+
 - **Every draw.** The full record with its winners and prizes per tier, filtered by year, jackpot won or not,
   or the balls it contains.
+
+  ![The full record of draws, with a few facts about it](docs/every-draw.png)
+
 - **My plays.** Save your lines; each one shows its best result ever and how it did in the latest draw.
 - **New draws.** The installed app notices when a Tuesday or Friday draw has been held since your data was
   last updated and offers to fetch it with one click.
+
+*In seven languages; here in French:*
+
+![EuroWatcher in French](docs/francais.png)
+
+*The pictures show real draws, as on the day they were taken.*
 
 ## Install
 
@@ -94,6 +113,7 @@ GitHub refreshes `data/draws.js` in this repository every Wednesday and Saturday
 | `desktop/` | The Windows program and its installer (C#) |
 | `unix/eurowatcher.py`, `install.sh` | The Linux and macOS edition |
 | `assets/` | Icons; `tools/make-icon.ps1` draws them |
+| `docs/` | The pictures on this page |
 
 ## Licence
 
