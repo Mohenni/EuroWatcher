@@ -8,6 +8,8 @@ Deutsch, Nederlands and Italiano.
 These are the real results, not predictions or "likely numbers": EuroWatcher only shows what was actually
 drawn, and what each draw actually paid.
 
+**Use it online: [mohenni.github.io/EuroWatcher](https://mohenni.github.io/EuroWatcher/)**, or install the app below.
+
 ![EuroWatcher: the latest draw and the start page](docs/overview.png)
 
 ## What it does
@@ -76,8 +78,12 @@ otherwise in your usual browser. Remove it with `sh install.sh --uninstall`
 
 ### Without installing anything
 
-Download this project and open `index.html` in your browser. Everything works except the one-click
-update; run `node tools/update-data.mjs` to fetch new draws instead.
+Open **[mohenni.github.io/EuroWatcher](https://mohenni.github.io/EuroWatcher/)**. It is the same page, kept up to
+date by GitHub every Wednesday and Saturday morning (`.github/workflows/pages.yml`). Your saved plays stay
+in your own browser.
+
+You can also download this project and open `index.html` directly; then run `node tools/update-data.mjs`
+to fetch new draws.
 
 ## Where the data comes from
 

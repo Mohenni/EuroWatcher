@@ -651,6 +651,10 @@
   /* ---------- hero ---------- */
 
   const missed = missedDraws();
+  // Where the page runs: the desktop app (http://127.0.0.1), the public website, or a copy on this computer.
+  const onThisComputer = location.protocol === 'file:' || ['127.0.0.1', 'localhost', '[::1]'].includes(location.hostname);
+  const website = /^https?:$/.test(location.protocol) && !onThisComputer;
+  const APP_DOWNLOAD = 'https://github.com/Mohenni/EuroWatcher/releases/latest';
   $('#hero-lede').replaceChildren(...rich('hero.lede', { count: int(draws.length), first: fmtBig(first.t) }));
 
   function renderLatest(desktopApp) {
@@ -659,7 +663,7 @@
       lineEl(latest.n, latest.s, { size: 'big' }),
       h('div', { class: 'latest-foot' }, statusTag(latest), h('span', { text: t('latest.foot', { pot: potText(latest), no: int(latest.no) }) }),
         h('button', { class: 'btn btn-small', type: 'button', text: t('d.check'), onclick: () => checkLine(latest) })),
-      missed.length && !desktopApp && h('p', { class: 'verdict-note' }, ...rich('latest.stale')),
+      missed.length && !desktopApp && h('p', { class: 'verdict-note' }, ...rich(website ? 'latest.staleSite' : 'latest.stale')),
     ].filter(Boolean));
   }
 
@@ -804,7 +808,9 @@
     $('#about-sources').replaceChildren(...(DATA.sources || []).map((src, i) => h('li', {},
       /^https:\/\//.test(src.url) ? h('a', { href: src.url, target: '_blank', rel: 'noopener noreferrer', text: src.name }) : h('strong', { text: src.name }),
       h('br'), `src${i}` in EN ? t(`src${i}`) : src.role)));
-    $('#about-refresh').replaceChildren(...rich(desktopApp ? 'about.refreshApp' : 'about.refreshWeb'));
+    $('#about-refresh').replaceChildren(...rich(desktopApp ? 'about.refreshApp' : website ? 'about.refreshSite' : 'about.refreshWeb'));
+    $('#about-get-app').hidden = desktopApp;
+    $('#about-get-app').replaceChildren(h('a', { class: 'btn btn-small', href: APP_DOWNLOAD, target: '_blank', rel: 'noopener noreferrer', text: t('about.getApp') }));
     $('#about-update').hidden = !desktopApp;
   }
 
@@ -838,7 +844,7 @@
   }
 
   async function detectDesktopApp() {
-    if (!/^https?:$/.test(location.protocol)) return false;
+    if (location.protocol !== 'http:' || !onThisComputer) return false;   // the app always serves http://127.0.0.1
     try {
       const res = await fetch('api/status', { cache: 'no-store' });
       if (!res.ok) return false;
@@ -880,5 +886,10 @@
   const fromUrl = parseLine(new URLSearchParams(location.search).get('line') || '');
   if (!fromUrl.error && fromUrl.n.length + fromUrl.s.length) setLine(fromUrl.n, fromUrl.s);
   else changed();
+  // A link to a section (…/#about) is followed once the content above it exists.
+  if (location.hash.length > 1) {
+    const target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    if (target) target.scrollIntoView({ behavior: 'instant' });
+  }
   detectDesktopApp().then(yes => { if (yes) setupDesktopApp(); });
 })();
