@@ -3,12 +3,17 @@ name: Update draw data
 # Keeps data/draws.js in this repository current, the morning after every Tuesday and Friday draw.
 # The installed apps fetch new draws themselves; this copy is what new installs start from, and
 # what the apps fall back to when the original sources cannot be reached.
-# If a source is down or blocks GitHub's machines, nothing is changed and the next run tries again.
+# The main archive refuses some data centres; then the draw is added from the other two sources
+# (see addToExisting in the script). If nothing can be confirmed, nothing changes and the next run
+# tries again. The job's summary page says which source failed.
 
 on:
   schedule:
     - cron: '30 6 * * 3,6'    # Wednesday and Saturday, 06:30 UTC
   workflow_dispatch:
+  push:                       # also when the update script itself changes, to try it at once
+    branches: [main]
+    paths: ['tools/update-data.mjs', '.github/workflows/update-data.yml']
 
 permissions:
   contents: write

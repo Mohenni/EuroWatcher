@@ -155,10 +155,18 @@ async function loadExisting() {
     const text = await readFile(OUT, 'utf8');
     const json = text.match(/window\.EURO_DATA\s*=\s*(\{[\s\S]*\});?\s*$/)?.[1];
     const data = JSON.parse(json);
-    return new Map(data.draws.map(([no, date, n, s, prizes, winners, gbp]) => [date, { no, date, n, s, prizes, winners, gbp }]));
+    const draws = new Map(data.draws.map(([no, date, n, s, prizes, winners, gbp]) => [date, { no, date, n, s, prizes, winners, gbp }]));
+    draws.checks = data.checks || {};
+    return draws;
   } catch {
     return new Map();
   }
+}
+
+/** On GitHub, also shows a message on the job's summary page. */
+function note(level, message) {
+  log(`  ${message}`);
+  if (process.env.GITHUB_ACTIONS) console.log(`::${level}::${message.replace(/\r?\n/g, ' ')}`);
 }
 
 function validate(d) {
@@ -177,16 +185,22 @@ async function main() {
   const previous = await loadExisting();
 
   log('Reading sources…');
-  const list = parseList(await load('list', files));
-  log(`  list:   ${list.size} draws`);
-  if (list.size < 1900) throw new Error('The draw list came back incomplete.');
+  let list = null;
+  try {
+    list = parseList(await load('list', files));
+    if (list.size < 1900) throw new Error(`only ${list.size} draws in it`);
+    log(`  list:   ${list.size} draws`);
+  } catch (err) {
+    list = null;
+    note('warning', `Draw list (${SOURCES.list.name}) unavailable: ${err.message}`);
+  }
 
   let prizes = new Map();
   try {
     prizes = parsePrizes(await load('prizes', files));
     log(`  prizes: ${prizes.size} draws`);
   } catch (err) {
-    log(`  prizes: unavailable (${err.message}); keeping prize data already on file`);
+    note('warning', `Prize source (${SOURCES.prizes.name}) unavailable: ${err.message}`);
   }
 
   let latest = null;
@@ -194,7 +208,12 @@ async function main() {
     latest = parseLatest(await load('latest', files));
     log(`  latest: draw of ${latest.date}`);
   } catch (err) {
-    log(`  latest: unavailable (${err.message})`);
+    note('warning', `Official feed (${SOURCES.latest.name}) unavailable: ${err.message}`);
+  }
+
+  if (!list) {
+    if (!previous.size) throw new Error('The draw list is needed to build the history from scratch.');
+    return addToExisting(previous, prizes, latest);
   }
 
   const dates = [...new Set([...list.keys(), ...prizes.keys(), ...(latest ? [latest.date] : [])])].sort();
@@ -232,9 +251,66 @@ async function main() {
   });
 
   if (draws.length < previous.size) problems.push(`only ${draws.length} draws found but ${previous.size} are already on file`);
+  await save(draws, previous, problems, crossChecked, officialLatest);
+}
+
+/**
+ * Used when the draw list cannot be read (it refuses some data centres, GitHub's included).
+ * Keeps the history on file and adds a new draw when the prize source and the official feed agree
+ * on it ball for ball, or when the official feed alone reports it with the next draw number in the
+ * sequence (it is the lottery operator's own record). Prize details missing then are filled in by a
+ * later run. Anything else waits for a later run.
+ */
+async function addToExisting(previous, prizes, latest) {
+  log('  Draw list unavailable: adding to the history on file, from the other two sources.');
+  const problems = [];
+  let crossChecked = previous.checks?.crossChecked || 0;
+  let officialLatest = previous.checks?.officialLatest ?? false;
+  // Fill in prize details of draws already on file (recent ones are often incomplete), when the balls agree.
+  const draws = [...previous.values()].map(d => {
+    const P = prizes.get(d.date);
+    if (!P) return d;
+    if (comboKey(P) !== comboKey(d)) {
+      problems.push(`${d.date}: the prize source disagrees with the balls on file (${comboKey(P)} vs ${comboKey(d)})`);
+      return d;
+    }
+    return { ...d, prizes: P.prizes ?? d.prizes, winners: P.winners ?? d.winners };
+  });
+  const lastOnFile = draws[draws.length - 1];
+  if (latest && latest.date === lastOnFile.date) {
+    if (comboKey(latest) !== comboKey(lastOnFile)) problems.push(`${latest.date}: the official feed disagrees with the balls on file`);
+    else officialLatest = true;
+  }
+
+  const newDates = [...new Set([...prizes.keys(), ...(latest ? [latest.date] : [])])].filter(date => date > lastOnFile.date).sort();
+  for (const date of newDates) {
+    const P = prizes.get(date);
+    const O = latest?.date === date ? latest : null;
+    const nextNo = draws[draws.length - 1].no + 1;
+    if (!O || (!P && O.no !== nextNo)) {
+      note('notice', `${date}: not confirmed yet; it will be added by a later run.`);
+      break;
+    }
+    if (!P) note('notice', `${date}: added from the official feed alone (draw ${O.no}); prize details will follow.`);
+    else if (comboKey(P) !== comboKey(O)) {
+      problems.push(`${date}: sources disagree on the balls (${comboKey(P)}  vs  ${comboKey(O)})`);
+      break;
+    }
+    const d = { no: nextNo, date, n: O.n, s: O.s, prizes: P?.prizes ?? null, winners: P?.winners ?? O.winners, gbp: O.gbp ?? null };
+    if (O.no && O.no !== d.no) problems.push(`${date}: draw number ${O.no} breaks the sequence (expected ${d.no})`);
+    for (const issue of validate(d)) problems.push(`${date}: ${issue}`);
+    draws.push(d);
+    crossChecked++;
+    officialLatest = true;
+  }
+  await save(draws, previous, problems, crossChecked, officialLatest);
+}
+
+async function save(draws, previous, problems, crossChecked, officialLatest) {
   if (problems.length) {
     console.error(`\nStopped: ${problems.length} problem(s). ${path.relative(ROOT, OUT)} was not changed.`);
     for (const p of problems.slice(0, 25)) console.error(`  - ${p}`);
+    if (process.env.GITHUB_ACTIONS) console.log(`::error::Draw data not updated: ${problems[0]}`);
     process.exit(1);
   }
 
@@ -261,6 +337,7 @@ async function main() {
   log(`  ${draws.length} draws, ${draws[0].date} to ${last.date}${previous.size ? ` (${added} new)` : ''}`);
   log(`  ${crossChecked} confirmed by a second source, ${checks.withPrizes} with a euro prize breakdown`);
   log(`  latest: #${last.no} ${last.date}  ${last.n.join(' ')} + ${last.s.join(' ')}${officialLatest ? '  (matches the official feed)' : ''}`);
+  if (process.env.GITHUB_ACTIONS) console.log(`::notice::${draws.length} draws on file (${added} new), latest ${last.date}: ${last.n.join(' ')} + ${last.s.join(' ')}`);
 }
 
 main().catch(err => {
