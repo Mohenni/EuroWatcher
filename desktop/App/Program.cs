@@ -23,14 +23,14 @@ using Microsoft.Win32;
 [assembly: AssemblyTitle("EuroWatcher")]
 [assembly: AssemblyProduct("EuroWatcher")]
 [assembly: AssemblyDescription("Every EuroMillions draw, checked against your numbers")]
-[assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: AssemblyVersion("1.1.0.0")]
+[assembly: AssemblyFileVersion("1.1.0.0")]
 
 namespace EuroWatcher
 {
     internal static class App
     {
-        public const string Version = "1.0.0";
+        public const string Version = "1.1.0";
         public const string Website = "https://github.com/Mohenni/EuroWatcher";
 
         public static string DataDir

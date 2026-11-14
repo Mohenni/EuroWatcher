@@ -120,8 +120,8 @@ EOF
   <key>CFBundleName</key><string>EuroWatcher</string>
   <key>CFBundleDisplayName</key><string>EuroWatcher</string>
   <key>CFBundleIdentifier</key><string>io.github.mohenni.eurowatcher</string>
-  <key>CFBundleVersion</key><string>1.0.0</string>
-  <key>CFBundleShortVersionString</key><string>1.0.0</string>
+  <key>CFBundleVersion</key><string>1.1.0</string>
+  <key>CFBundleShortVersionString</key><string>1.1.0</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleExecutable</key><string>EuroWatcher</string>
   <key>CFBundleIconFile</key><string>eurowatcher</string>

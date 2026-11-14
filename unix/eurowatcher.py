@@ -27,7 +27,7 @@ import webbrowser
 from datetime import date, datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 FIRST_PORT = 47811          # fixed, so the page's address (and its saved plays) stays the same
 GITHUB_COPY = "https://raw.githubusercontent.com/Mohenni/EuroWatcher/main/data/draws.js"
 
