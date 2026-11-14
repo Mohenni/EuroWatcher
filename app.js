@@ -748,6 +748,7 @@
     if (!m) {
       list.replaceChildren(h('li', { class: 'draws-empty', text: t('sd.choose') }));
       count.textContent = '';
+      $('#sd-stats').hidden = true;
       return;
     }
     const picked = utc(sdDate.value);
@@ -759,6 +760,34 @@
       same.length && t('sd.found', { day, draws: drawsN(same.length), years: same.map(d => d.year).reverse().join(', ') }),
       !drawDay && t('sd.notDrawDay', { date: fmtT(picked) }),
     ].filter(Boolean).map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
+    renderSameDayStats(same, day);
+  }
+
+  /**
+   * The balls drawn most often on this day and month. Shown as history only: a test on every draw
+   * since 2004 found that a date's frequent numbers are no more likely to come up on it again.
+   */
+  function renderSameDayStats(same, day) {
+    const box = $('#sd-stats');
+    box.hidden = same.length < 2;
+    if (box.hidden) return;
+    const top = (values, limit) => {
+      const counts = new Map();
+      for (const v of values) counts.set(v, (counts.get(v) || 0) + 1);
+      return [...counts].filter(([, n]) => n >= 2).sort((a, b) => b[1] - a[1] || a[0] - b[0]).slice(0, limit);
+    };
+    const nums = top(same.flatMap(d => d.n), 10);
+    const stars = top(same.flatMap(d => d.s), 4);
+    const group = (label, items, cls) => h('div', { class: 'sd-group' },
+      h('h3', { text: label }),
+      items.length
+        ? h('div', { class: 'sd-balls' }, items.map(([v, n]) => h('span', { class: 'sd-ball', title: t('sd.statsTimes', { n }) },
+          h('span', { class: cls, text: v }), h('span', { class: 'sd-count', text: `×${n}` }))))
+        : h('p', { class: 'sd-none', text: t('sd.statsNoRepeat') }));
+    box.replaceChildren(
+      h('h3', { class: 'sd-title', text: t('sd.statsTitle', { day, draws: drawsN(same.length) }) }),
+      h('div', { class: 'sd-groups' }, group(t('numbers'), nums, 'ball'), group(t('stars'), stars, 'star')),
+      h('p', { class: 'verdict-note', text: t('sd.statsNote', { count: int(draws.length) }) }));
   }
 
   sdDate.addEventListener('input', renderSameDay);
